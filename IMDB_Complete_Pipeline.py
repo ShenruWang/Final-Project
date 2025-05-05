@@ -1865,9 +1865,6 @@ model = sm.OLS(y, X).fit()
 # Return the summary
 print(model.summary())
 
-
-
-
 import statsmodels.formula.api as smf
 
 # Create week dummies
@@ -1875,6 +1872,74 @@ final_df['week'] = final_df['week'].astype(str)  # make sure week is categorical
 model = smf.ols(formula="gross ~ review_count + positive_ratio + C(week)", data=final_df).fit()
 print(model.summary())
 
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import statsmodels.api as sm
+
+def main():
+    st.title("🎬 IMDb Review & Box Office Dashboard")
+
+    # Load data
+    st.subheader("1. Load Data")
+    df = pd.read_excel("code_output/filtered_reviews_with_sentiment.xlsx")
+    box_office = pd.read_csv("code_output/the_numbers_box_office_weeks1-6.csv")
+
+    # Preprocess
+    df["week"] = df["week_since_release"].astype(int)
+    df["is_positive"] = df["sentiment_cnn"] > 0.5
+
+    weekly_stats = df.groupby(["movie", "week"]).agg(
+        review_count=('sentiment_cnn', 'count'),
+        positive_count=('is_positive', 'sum')
+    ).reset_index()
+    weekly_stats["positive_ratio"] = weekly_stats["positive_count"] / weekly_stats["review_count"]
+
+    merged = pd.merge(
+        box_office, weekly_stats,
+        how="left",
+        left_on=["Movie", "Week"],
+        right_on=["movie", "week"]
+    )
+
+    final_df = merged[['Movie', 'Week', 'Gross', 'review_count', 'positive_count', 'positive_ratio']]
+    final_df = final_df.dropna(subset=['review_count']).reset_index(drop=True)
+
+    st.write("### Combined Sentiment and Box Office Data", final_df.head())
+
+    # Plot: Sentiment vs Gross
+    st.subheader("2. Sentiment vs Box Office")
+    plt.figure(figsize=(10, 6))
+    sns.scatterplot(
+        data=final_df,
+        x="positive_ratio",
+        y="gross",
+        hue="week",
+        palette="viridis",
+        alpha=0.8
+    )
+    plt.yscale("log")
+    plt.xlabel("Positive Review Ratio")
+    plt.ylabel("Weekly Gross ($)")
+    plt.title("Sentiment vs Gross")
+    st.pyplot(plt)
+
+    # Linear Regression: review_count + positive_ratio → gross
+    st.subheader("3. Regression Analysis")
+    df_clean = final_df.dropna(subset=["gross", "review_count", "positive_ratio"])
+    df_clean["gross"] = df_clean["gross"].replace('[\$,]', '', regex=True).astype(float)
+    df_clean["week"] = df_clean["week"].astype(int)
+
+    X = df_clean[["review_count", "positive_ratio", "week"]]
+    X = sm.add_constant(X)
+    y = df_clean["gross"]
+
+    model = sm.OLS(y, X).fit()
+    st.text(model.summary())
+
+if __name__ == "__main__":
+    main()
 
 
 
