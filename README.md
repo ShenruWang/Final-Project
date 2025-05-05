@@ -36,10 +36,10 @@ Each model was evaluated based on accuracy and confusion matrix analysis on the 
    pip install -r requirements.txt
    ```
 
-2. If using `app.py`:
+2. If using `IMDB_Complete_Pipeline.py`:
 
    ```bash
-   streamlit run app.py
+   streamlit run IMDB_Complete_Pipeline.py
    ```
 
 3. If `.pkl` models are not found locally, they will be downloaded automatically from Google Drive.
