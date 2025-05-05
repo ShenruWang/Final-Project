@@ -7,23 +7,26 @@ import keras
 import re
 import string
 from tensorflow.keras.models import load_model
-
+import requests
+from bs4 import BeautifulSoup
+import time
+import json
 import nltk
-
 import os
+from fuzzywuzzy import process, fuzz
+from io import StringIO
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+
+
 for dirname, _, filenames in os.walk('/kaggle/input'):
     for filename in filenames:
         print(os.path.join(dirname, filename))
 
 
 
-pip install --upgrade tensorflow
-
-
-
-import pandas as pd
-import os
-import json
+# pip install --upgrade tensorflow
 
 folder_path = "/Users/hotpotato/Desktop/Final Project/IMDb Review Dataset - ebD"
 
@@ -45,30 +48,14 @@ df_raw = pd.concat(dataframes, ignore_index=True)
 df_raw.head()
 
 
-
-
-#  转置 DataFrame，使每列变为一行
-flattened_reviews = df_raw.transpose().reset_index(drop=True)
-
 # Flatten the dict in each column
+flattened_reviews = df_raw.transpose().reset_index(drop=True)
 flattened_reviews = pd.json_normalize(flattened_reviews[0])
-
 print(flattened_reviews.columns)
 flattened_reviews.head()
-
-
-
-
 flattened_reviews.info()
-
-
-
 flattened_reviews.isnull().sum()
-
-
-
 flattened_reviews.groupby('rating').describe()
-
 
 
 def clean_reviews_data(df):
@@ -91,14 +78,8 @@ def clean_reviews_data(df):
         df.loc[~df["spoiler_tag"].isin(valid_tags), "spoiler_tag"] = np.nan
 
     return df
-
-
-
-
 df_cleaned = clean_reviews_data(flattened_reviews)
 df_cleaned.head()
-
-
 
 
 # let's modify the data to add more useful information for later
@@ -115,15 +96,10 @@ display(df_cleaned.describe(include="all"))
 print(df_cleaned.info(memory_usage="deep"))
 print(df_cleaned.shape)
 
-
-
 df_cleaned['review_date'] = pd.to_datetime(df_cleaned['review_date'], errors='coerce')
 df_cleaned['review_year'] = df_cleaned['review_date'].dt.year
 year_counts = df_cleaned['review_year'].value_counts().sort_index()
 print(year_counts)
-
-
-
 
 year_counts.plot(kind='bar', figsize=(10,5), color='skyblue')
 plt.title("Distribution of Review Years")
@@ -133,8 +109,6 @@ plt.xticks(rotation=45)
 plt.grid(axis='y', linestyle='--', alpha=0.7)
 plt.tight_layout()
 plt.show()
-
-
 
 df_cleaned['publish_year'] = df_cleaned['movie'].str.extract(r"\((\d{4})\)").astype('Int64')
 movie_year_counts = df_cleaned['publish_year'].value_counts().sort_index()
@@ -207,10 +181,6 @@ movie_titles_only = [title for title in unique_titles if is_movie_title(title)]
 print(movie_titles_only[:610]) 
 
 
-
-
-import re
-
 def clean_years_only(title):
     """
     Clean only the year portion (inside parentheses) and remove specific punctuation marks (., #, ‘).
@@ -245,8 +215,6 @@ movie_titles_only_cleaned = [
 # Preview
 for t in movie_titles_only_cleaned[:300]:
     print(t)
-
-
 
 
 
@@ -291,8 +259,6 @@ plt.show()
 
 
 
-
-
 # Extraction Year
 def extract_year(title):
     match = re.search(r"\((\d{4})\)", title)
@@ -324,8 +290,6 @@ plt.grid(axis='y', linestyle='--', alpha=0.5)
 # Layout
 plt.tight_layout()
 plt.show()
-
-
 
 
 df_year_counts = year_counts.reset_index()
@@ -366,7 +330,6 @@ review_date_distribution = review_date_distribution.dropna()
 # Group by year and count
 review_year_counts = review_date_distribution.dt.year.value_counts().sort_index()
 
-import matplotlib.pyplot as plt
 
 plt.figure(figsize=(12, 6))
 review_year_counts.plot(kind='bar', color="#6BAED6")
@@ -435,17 +398,8 @@ display(df_filtered.head())
 
 print(df_filtered）
 
-
-
 df_filtered.to_excel("filtered_movies.xlsx", index=False)
 
-
-
-import requests
-from bs4 import BeautifulSoup
-import pandas as pd
-import re
-import time
 
 nm = pd.read_excel("/Users/hotpotato/Desktop/Final Project/filtered_movies.xlsx")
 movies = nm["movie"].tolist()
@@ -504,17 +458,7 @@ for m in movies:
 df = pd.DataFrame(results)
 df.to_csv("wiki_movie_country_final.csv", index=False)
 
-
-
-
-pip install fuzzywuzzy python-Levenshtein
-
-
-
-import pandas as pd
-import re
-from fuzzywuzzy import process, fuzz
-
+# pip install fuzzywuzzy python-Levenshtein
 
 # Step 1: Read filtered movie list
 
@@ -592,15 +536,9 @@ index=False
 print("Done in: filtered_movies_with_imdb_links_fast.xlsx")
 
 
-
-pip install pandas openpyxl requests beautifulsoup4
-
+# pip install pandas openpyxl requests beautifulsoup4
 
 
-import pandas as pd
-import requests
-from bs4 import BeautifulSoup
-import time
 
 # —— Configuration ——
 INPUT_XLSX = "filtered_movies_with_imdb_links_fast.xlsx" # with imdb_link
@@ -651,12 +589,6 @@ time.sleep(SLEEP_SEC)
 df.to_excel(OUTPUT_XLSX, index=False)
 print("Done in:", OUTPUT_XLSX)
 
-
-
-import pandas as pd
-import requests
-from bs4 import BeautifulSoup
-import time
 
 # —— Configuration ——
 INPUT_XLSX  = "/Users/hotpotato/Desktop/Final Project/code_output/filtered_movies_with_country_only.xlsx" 
@@ -712,18 +644,17 @@ print(" Retried all errors and updated:", INPUT_XLSX)
 
 df = pd.read_excel("/Users/hotpotato/Desktop/Final Project/code_output/filtered_movies_with_country_only.xlsx")
 
-# 拆分多国情况，把每部电影可能的多个国家都单独计数
+# Split the multi-country situation and count each possible multiple countries of each movie separately
 countries_series = (
     df['country_of_origin']
       .dropna()
       .apply(lambda s: [c.strip() for c in s.split(',')])
 )
 
-# 展平列表并计数
 all_countries = [c for sublist in countries_series for c in sublist]
 country_counts = pd.Series(all_countries).value_counts()
 
-# 绘图
+
 plt.figure(figsize=(10, 6))
 country_counts.plot(kind='bar')
 plt.xlabel('Country of Origin')
@@ -789,15 +720,6 @@ df_us.to_excel(output_path, index=False)
 
 output_path
 
-
-
-
-
-import pandas as pd
-import requests
-from bs4 import BeautifulSoup
-import time
-
 # Configuration
 INPUT_XLSX = "/Users/hotpotato/Desktop/Final Project/code_output/filtered_movies_us_only.xlsx"
 OUTPUT_XLSX = "/Users/hotpotato/Desktop/Final Project/code_output/filtered_movies_us_with_release.xlsx"
@@ -846,18 +768,6 @@ for idx, row in df.iterrows():
 df.to_excel(OUTPUT_XLSX, index=False)
 print(f"Saved to: {OUTPUT_XLSX}")
 
-
-
-
-import re
-import time
-import random
-import requests
-import pandas as pd
-from bs4 import BeautifulSoup
-from io import StringIO
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 # ── Configuration ─────────────────────────────────────
 INPUT_XLSX  = "/Users/hotpotato/Desktop/Final Project/code_output/filtered_movies_us_with_release.xlsx"
@@ -983,13 +893,7 @@ if fetch_fail:
 
 
 
-import re
-import time
-import random
-import requests
-import pandas as pd
-from bs4 import BeautifulSoup
-from io import StringIO
+
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -1221,9 +1125,9 @@ plt.show()
 
 
 
-!pip install wordcloud
-!pip install spacy
-!pip install textblob
+# !pip install wordcloud
+# !pip install spacy
+# !pip install textblob
 
 
 
@@ -1600,20 +1504,11 @@ joblib.dump(xgb_model, 'xgb_model.pkl')
 
 
 
-!pip install tensorflow
-
-
-
-pip install --upgrade tensorflow
-
-
-
-conda install python=3.10
-
-
-
-!pip uninstall -y numpy
-!pip install numpy==1.24.3
+# !pip install tensorflow
+# pip install --upgrade tensorflow
+# conda install python=3.10
+# !pip uninstall -y numpy
+# !pip install numpy==1.24.3
 
 
 
@@ -1633,11 +1528,6 @@ print(word_tokenize("Hello, world!"))
 
 
 
-
-import pandas as pd
-import numpy as np
-import re
-from bs4 import BeautifulSoup
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import nltk
@@ -1663,7 +1553,7 @@ df['label'] = df['sentiment'].apply(lambda x: 1 if x == 'positive' else 0)
 
 
 
-!pip install tensorflow==2.16.2
+# !pip install tensorflow==2.16.2
 
 
 
@@ -1739,13 +1629,8 @@ history = cnn_glove.fit(X_train_pad, y_train,
                         validation_split=0.2)
 
 
-
-import joblib
 joblib.dump(cnn_glove, 'cnn_glove.pkl')
 
-
-
-import matplotlib.pyplot as plt
 
 # Accuracy
 plt.plot(history.history['accuracy'], label='Train Accuracy')
@@ -1779,12 +1664,6 @@ plt.title("Confusion Matrix: CNN with GloVe")
 plt.show()
 
 
-
-
-
-
-
-import pandas as pd
 
 # Read movie review data with sentiment scores
 df = pd.read_excel("/Users/hotpotato/Desktop/Final Project/code_output/filtered_reviews_with_sentiment.xlsx")
@@ -1840,14 +1719,8 @@ summary_pivot = summary.pivot(index="movie", columns="week", values="positive_ra
 # Optional: rename columns to "Week X Positive %"
 summary_pivot.columns = [f"Week {int(c)} Pos %" for c in summary_pivot.columns]
 
-
-
-
 summary_pivot
 
-
-
-import pandas as pd
 
 # Load sentiment and review counts per movie-week
 reviews_df = pd.read_excel("/Users/hotpotato/Desktop/Final Project/code_output/filtered_reviews_with_sentiment.xlsx")
@@ -1884,9 +1757,6 @@ final_df
 
 print(final_df.columns.tolist())
 
-
-
-
 # Make sure week is a string
 final_df['week'] = final_df['week'].astype(str)
 
@@ -1905,8 +1775,6 @@ plt.ylabel("")
 plt.xlabel("Week")
 plt.tight_layout()
 plt.show()
-
-
 
 
 
