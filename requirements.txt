@@ -7,6 +7,7 @@ scikit-learn
 xgboost
 tensorflow
 keras
+protobuf==3.20.*
 beautifulsoup4
 fuzzywuzzy
 requests
