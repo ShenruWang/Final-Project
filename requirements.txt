@@ -17,3 +17,5 @@ wordcloud
 nltk
 joblib
 openpyxl
+xgboost==1.7.5
+
