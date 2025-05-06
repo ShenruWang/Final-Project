@@ -495,7 +495,7 @@ for year, grp in df_titles.groupby("startYear"):
 # Step 4: Clean up movie names (remove the year in brackets)
 
 def clean_title(title):
-return re.sub(r"\s*\(\d{4}\)", "", title).strip()
+    return re.sub(r"\s*\(\d{4}\)", "", title).strip()
 
 df_filtered["clean_movie"] = df_filtered["movie"].apply(clean_title)
 
