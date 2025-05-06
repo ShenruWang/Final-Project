@@ -477,9 +477,9 @@ usecols=imdb_cols, chunksize=200000
 
 chunks = []
 for chunk in reader: 
-mask = (chunk["titleType"] == "movie") & (chunk["startYear"].isin(map(str, target_years))) 
-filtered = chunk.loc[mask, ["tconst", "primaryTitle", "startYear"]] 
-chunks.append(filtered)
+    mask = (chunk["titleType"] == "movie") & (chunk["startYear"].isin(map(str, target_years))) 
+    filtered = chunk.loc[mask, ["tconst", "primaryTitle", "startYear"]] 
+    chunks.append(filtered)
 df_titles = pd.concat(chunks, ignore_index=True)
 df_titles["startYear"] = df_titles["startYear"].astype(int)
 
