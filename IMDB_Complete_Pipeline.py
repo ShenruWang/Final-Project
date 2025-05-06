@@ -1485,8 +1485,6 @@ joblib.dump(cm_svm_tfidf, 'svm_tfidf_model.pkl')
 
 
 
-!pip install xgboost
-
 
 
 from xgboost import XGBClassifier
