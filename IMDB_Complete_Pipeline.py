@@ -396,7 +396,7 @@ display(df_filtered.head())
 
 
 
-print(df_filtered）
+print(df_filtered)
 
 df_filtered.to_excel("filtered_movies.xlsx", index=False)
 
