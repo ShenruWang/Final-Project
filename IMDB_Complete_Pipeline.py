@@ -484,12 +484,13 @@ df_titles = pd.concat(chunks, ignore_index=True)
 df_titles["startYear"] = df_titles["startYear"].astype(int)
 
 # Step 3: Build a fast index grouped by year
-
 year_to_titles = {}
 year_to_id = {}
-for year, grp in df_titles.groupby("startYear"): 
-titles = grp["primaryTitle"].tolist() 
-year_to_titles[year] = titles year_to_id[year] = dict(zip(grp["primaryTitle"], grp["tconst"]))
+
+for year, grp in df_titles.groupby("startYear"):
+    titles = grp["primaryTitle"].tolist()
+    year_to_titles[year] = titles
+    year_to_id[year] = dict(zip(grp["primaryTitle"], grp["tconst"]))
 
 # Step 4: Clean up movie names (remove the year in brackets)
 
@@ -501,27 +502,29 @@ df_filtered["clean_movie"] = df_filtered["movie"].apply(clean_title)
 # Step 5: Matching function, first precise then fuzzy (using fuzzywuzzy)
 
 def match_imdb(row):
-title = row["clean_movie"]
-year = int(row["year"])
-candidates = year_to_titles.get(year, [])
-# Do case-insensitive exact match first
-for cand in candidates:
-if cand.lower() == title.lower(): 
-imdb_id = year_to_id[year][cand] 
-return imdb_id, f"https://www.imdb.com/title/{imdb_id}/" 
+    title = row["clean_movie"]
+    year = int(row["year"])
+    candidates = year_to_titles.get(year, [])
 
-# Do fuzzy matching again 
-best = process.extractOne( 
-title, 
-candidates, 
-scorer=fuzz.WRatio, 
-score_cutoff=90 
-) 
-if best: 
-matched = best[0] 
-imdb_id = year_to_id[year][matched] 
-return imdb_id, f"https://www.imdb.com/title/{imdb_id}/" 
-return "Not found", "N/A"
+    # Do case-insensitive exact match first
+    for cand in candidates:
+        if cand.lower() == title.lower(): 
+            imdb_id = year_to_id[year][cand] 
+            return imdb_id, f"https://www.imdb.com/title/{imdb_id}/"
+
+    # Do fuzzy matching
+    best = process.extractOne(
+        title,
+        candidates,
+        scorer=fuzz.WRatio,
+        score_cutoff=90
+    )
+    if best: 
+        matched = best[0] 
+        imdb_id = year_to_id[year][matched] 
+        return imdb_id, f"https://www.imdb.com/title/{imdb_id}/"
+
+    return "Not found", "N/A"
 
 # -----------------------
 # Step 6: Apply in batches and export
@@ -551,43 +554,43 @@ df = pd.read_excel(INPUT_XLSX)
 df = df[(df.imdb_id != "Not found") & (df.imdb_link != "N/A")].reset_index(drop=True)
 df["country_of_origin"] = "" # Add a new column
 
-# —— Extract Country Function --
+# —— Extract Country Function —
 def extract_country(imdb_url):
-try:
-resp = requests.get(imdb_url, headers=HEADERS, timeout=10)
-resp.raise_for_status()
-soup = BeautifulSoup(resp.content, "html.parser")
+    try:
+        resp = requests.get(imdb_url, headers=HEADERS, timeout=10)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.content, "html.parser")
 
-# Locate data-testid="title-details-origin"
-li = soup.find("li", {"data-testid": "title-details-origin"})
-if not li:
-return "Not listed"
+        # Locate data-testid="title-details-origin"
+        li = soup.find("li", {"data-testid": "title-details-origin"})
+        if not li:
+            return "Not listed"
 
-# Delete possible footnotes sup
-for sup in li.find_all("sup"):
-sup.decompose()
+        # Delete possible footnotes sup
+        for sup in li.find_all("sup"):
+            sup.decompose()
 
-# Extract all text in <a> tags
-links = li.select("div.ipc-metadata-list-item__content-container a")
-if links:
-return ", ".join(a.text.strip() for a in links)
-else:
-# If not <a>, then directly get the container text
-div = li.find("div", class_="ipc-metadata-list-item__content-container")
-return div.get_text(", ", strip=True) if div else "Not listed"
-except:
-return "Error"
-
+        # Extract all text in <a> tags
+        links = li.select("div.ipc-metadata-list-item__content-container a")
+        if links:
+            return ", ".join(a.text.strip() for a in links)
+        else:
+            # If not <a>, then directly get the container text
+            div = li.find("div", class_="ipc-metadata-list-item__content-container")
+            return div.get_text(", ", strip=True) if div else "Not listed"
+    except:
+        return "Error"
 # —— Loop to grab the country ——
 for idx, row in df.iterrows():
-country = extract_country(row["imdb_link"])
-df.at[idx, "country_of_origin"] = country
-print(f"[{idx+1}/{len(df)}] {row['movie']} → {country}")
-time.sleep(SLEEP_SEC)
-
-# —— Save the result ——
-df.to_excel(OUTPUT_XLSX, index=False)
-print("Done in:", OUTPUT_XLSX)
+    try:
+        country = extract_country(row["imdb_link"])
+    except Exception as e:
+        country = "Error"
+        print(f"[{idx+1}] Error on {row['movie']}: {e}")
+    
+    df.at[idx, "country_of_origin"] = country
+    print(f"[{idx+1}/{len(df)}] {row['movie']} → {country}")
+    time.sleep(SLEEP_SEC)
 
 
 # —— Configuration ——
@@ -889,8 +892,6 @@ else:
 if fetch_fail:
     pd.DataFrame({"Failed Movies": fetch_fail}).to_csv(FAILED_CSV, index=False)
     print(f" Saved failed movies list to: {FAILED_CSV}")
-
-
 
 
 
