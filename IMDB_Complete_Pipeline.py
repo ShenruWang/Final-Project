@@ -689,8 +689,9 @@ pct = country_counts / total * 100
 large = country_counts[pct >= 1]
 small_sum = country_counts[pct < 1].sum()
 new_counts = large.copy()
-if small_sum > 0:
-new_counts['Others'] = small_sum
+if some_condition:
+    new_counts['Others'] = small_sum
+
 
 # Draw a pie chart using the desaturated Pastel1 palette
 plt.figure(figsize=(8, 8))
