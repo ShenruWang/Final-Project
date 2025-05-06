@@ -279,7 +279,7 @@ plt.figure(figsize=(16, 6))
 plt.bar(year_counts.index, year_counts.values, color="#4C72B0")  # Removed edgecolor
 
 # Ticks, title, labels
-plt.xticks(ticks=range(min(year_counts.), max(year_counts.index), 5), rotation=45)
+plt.xticks(ticks=range(min(year_counts.index), max(year_counts.index), 5), rotation=45)
 plt.title("Number of Movies per Year (Filtered Titles)", fontsize=16, weight='bold')
 plt.xlabel("Release Year", fontsize=14)
 plt.ylabel("Number of Movies", fontsize=14)
